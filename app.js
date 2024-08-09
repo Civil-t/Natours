@@ -3,23 +3,23 @@ const fs = require("fs");
 
 const app = express();
 
+//MIDDLEWARE
+
 app.use(express.json());
 
-/* app.get("/", (req, res) => {
-  res.status(200).json({ message: "Hello from the server", app: "Natours" });
+app.use((req, res, next) => {
+  console.log("Hello from the middleware");
+  next();
 });
 
-app.post("/", (req, res) => {
-  res.send("You can post ...");
-}); */
-
-// Read tours data
-const tours = JSON.parse(
-  fs.readFileSync(`${__dirname}/dev-data/data/tours-simple.json`)
-);
+app.use((req, res, next) => {
+  req.requestTime = new Date().toISOString;
+  console.log(requestTime);
+  next();
+});
 
 // Get all tours API
-app.get("/api/v1/tours", (req, res) => {
+const getTours = (req, res) => {
   res.status(200).json({
     status: "successful",
     results: tours.length,
@@ -27,21 +27,65 @@ app.get("/api/v1/tours", (req, res) => {
       tours,
     },
   });
-});
+};
+
+// ROUTE HANDLERS
 
 //Get a tour based on a url parameter
-app.get("/api/v1/tours/:id", (req, res) => {
+const getTour = (req, res) => {
+  const id = req.params.id * 1;
+  const tour = tours.find((el) => el.id === id);
+
+  //id > tours.length
+  if (!tour) {
+    return res.status(404).json({
+      status: "fail",
+      message: "Invalid ID",
+    });
+  }
+
   res.status(200).json({
-    status: "successful",
-    results: tours.length,
+    status: "success",
     data: {
       tour,
     },
   });
-});
+};
+
+// Update values of an object using patch
+const updateTour = (req, res) => {
+  if (req.params.id * 1 > tours.length) {
+    return res.status(404).json({
+      status: "fail",
+      message: "Invalid ID",
+    });
+  }
+
+  res.status(200).json({
+    status: "successful",
+    data: {
+      tour: "<Updated tour here..>",
+    },
+  });
+};
+
+// Delete a tour
+const deleteTour = (req, res) => {
+  if (req.params.id * 1 > tours.length) {
+    return res.status(404).json({
+      status: "fail",
+      message: "Invalid ID",
+    });
+  }
+
+  res.status(204).json({
+    status: "success",
+    data: null,
+  });
+};
 
 //Post a tour
-app.post("/api/v1/tours", (req, res) => {
+const postTour = (req, res) => {
   const newId = tours[tours.length - 1].id + 1;
   const newTour = Object.assign({ id: newId }, req.body);
 
@@ -56,7 +100,26 @@ app.post("/api/v1/tours", (req, res) => {
         .json({ status: "Added successfully", data: req.body, ID: newId });
     }
   );
-});
+};
+
+// Read tours data
+const tours = JSON.parse(
+  fs.readFileSync(`${__dirname}/dev-data/data/tours-simple.json`)
+);
+
+/* app.get("/api/v1/tours", getTours);
+app.get("/api/v1/tours/:id", getTour);
+app.patch("/api/v1/tours/:id", updateTour);
+app.delete("/api/v1/tours/:id", deleteTour);
+app.post("/api/v1/tours", postTour); */
+
+//ROUTES
+app.route("/api/v1/tours").get(getTours).post(postTour);
+app
+  .route("/api/v1/tours/:id")
+  .get(getTour)
+  .patch(updateTour)
+  .delete(deleteTour);
 
 const port = 3000;
 app.listen(port, () => {
